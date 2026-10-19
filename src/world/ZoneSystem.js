@@ -160,13 +160,13 @@ export class ZoneSystem {
           gate.rotation.y = Math.atan2(p2.x - p1.x, p2.z - p1.z) + Math.PI / 2;
           group.add(gate);
           items.push({ mesh: gate, x: gate.position.x, z: gate.position.z, kind: 'building' });
-          this.enqueueSprout(gate, sproutIndex * 0.04, 1.15, sproutIndex++);
+          this.enqueueSprout(gate, 0.08, 1.15, sproutIndex++);
         } else {
           const seg = createFortressWallSegment(p1, p2, y1, y2, this.mats);
           if (seg) {
             group.add(seg);
             items.push({ mesh: seg, x: seg.position.x, z: seg.position.z, kind: 'wall' });
-            this.enqueueSprout(seg, sproutIndex * 0.025, 1.0, sproutIndex++);
+            this.enqueueSprout(seg, i * 0.012, 1.0, i);
           }
         }
       }
@@ -185,10 +185,11 @@ export class ZoneSystem {
         if (seg) {
           group.add(seg);
           items.push({ mesh: seg, x: seg.position.x, z: seg.position.z, kind: 'wall' });
-          this.enqueueSprout(seg, sproutIndex * 0.02, 1.0, sproutIndex++);
+          this.enqueueSprout(seg, i * 0.01, 1.0, i);
         }
       }
     }
+    sproutIndex = 2;
 
     // 2. Interior Procedural Generation by Zone Type
     const spacingMap = {

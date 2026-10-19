@@ -548,26 +548,26 @@ class DioramaApp {
 
     if (presetKey === 'andong') {
       // 1. Central Noble Giwa Village (양반 기와촌)
-      addZ(this.makeOvalPoly(-2, 5.5, 8.5, 6.2), 'giwa', { density: 1.1, buildWalls: true, name: '하회 양반촌' });
+      addZ(this.makeOvalPoly(-1.5, 10.2, 9.2, 6.0), 'giwa', { density: 1.25, buildWalls: true, name: '하회 양반촌' });
       // 2. Cozy Choga Village (초가 민가촌)
-      addZ(this.makeOvalPoly(11, 2.5, 6.8, 5.5), 'choga', { density: 1.1, buildWalls: true, name: '아랫말 초가촌' });
+      addZ(this.makeOvalPoly(12.0, 5.5, 6.8, 5.4), 'choga', { density: 1.15, buildWalls: true, name: '아랫말 초가촌' });
       // 3. Buyongdae Pine Forest on NW cliff (부용대 송림)
-      addZ(this.makeOvalPoly(-13, -13, 8.5, 7.2), 'forest', { density: 1.2, buildWalls: false, name: '부용대 적송림' });
+      addZ(this.makeOvalPoly(-12.5, -13.0, 8.8, 7.2), 'forest', { density: 1.25, buildWalls: false, name: '부용대 적송림' });
       // 4. Paddy fields on SW meadow (풍년 다랑논)
-      addZ(this.makeOvalPoly(-14, 7, 6.5, 5.5), 'paddy', { density: 1.1, buildWalls: false, name: '풍년 수리답' });
+      addZ(this.makeOvalPoly(-15.5, 6.5, 6.5, 5.5), 'paddy', { density: 1.1, buildWalls: false, name: '풍년 수리답' });
       // 5. Riverside Ferry Dock (나루터와 황포돛배)
-      addZ(this.makeOvalPoly(3, -3.5, 6.5, 4.5), 'dock', { density: 1.0, buildWalls: false, name: '나루터 포구' });
+      addZ(this.makeOvalPoly(4.5, -2.5, 7.0, 4.8), 'dock', { density: 1.1, buildWalls: false, name: '나루터 포구' });
       // 6. Road crossing river with arched stone bridge (홍예교와 고을길)
       addR([
-        { x: -10, z: 6 },
-        { x: -2, z: 5 },
+        { x: -10, z: 9 },
+        { x: -2, z: 7 },
         { x: -1, z: -2 },
         { x: -2, z: -9 },
         { x: -8, z: -13 }
       ], 'stone', 'arch');
       // 7. Scenic Pavilion on cliff & Dangsan tree
-      addL('pavilion', -9.5, -10.5, 0.4);
-      addL('sacredtree', 5.5, 8.0, 0);
+      addL('pavilion', -8.5, -10.5, 0.4);
+      addL('sacredtree', 6.5, 10.0, 0);
     } else if (presetKey === 'palace') {
       addZ(this.makeOvalPoly(0, -2, 11.5, 8.5), 'palace', { density: 1.0, buildWalls: true, name: '북악 산성 행궁' });
       addZ(this.makeOvalPoly(-15, -6, 7.5, 8.0), 'forest', { density: 1.2, buildWalls: false, name: '좌청룡 송림' });

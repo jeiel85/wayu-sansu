@@ -14,6 +14,16 @@
 👉 **[https://jeiel85.github.io/wayu-sansu/](https://jeiel85.github.io/wayu-sansu/)**  
 *(설치 없이 데스크톱·태블릿·모바일 웹 브라우저에서 바로 플레이할 수 있습니다.)*
 
+<p align="center">
+  <img src="./media/wayu_sansu_preview.gif" alt="와유산수 시연 프리뷰" width="100%" />
+</p>
+
+| 🌸 봄 · 하회청풍도 (매화와 기와촌) | 🍁 가을 · 북악산성행궁도 (단풍과 석양) |
+| :---: | :---: |
+| ![안동 하회마을 봄](./media/01_andong_spring.png) | ![북악산성 행궁 가을](./media/02_gyeonghoeru_autumn.png) |
+| **❄️ 겨울 · 심산청량사도 (설경과 고찰)** | **🏮 달밤 · 마포황포귀범도 (호롱불 포구)** |
+| ![산사 해인사 겨울](./media/03_temple_winter.png) | ![마포나루 달밤](./media/04_maponaru_night.png) |
+
 ---
 
 ## 📖 작품 소개 (About)

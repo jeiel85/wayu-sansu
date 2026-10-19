@@ -706,16 +706,17 @@ export class Turntable {
             h = 0.55 + Math.min(1.8, (distRiver - 0.22) * 2.2);
           }
           // Buyongdae cliff in the north-west & Namsan hill in the south-east
+          const riverBankBlend = Math.min(1, Math.max(0, (distRiver - 0.16) / 0.12));
           const cliffDist = Math.hypot(nx + 0.45, nz + 0.52);
           if (cliffDist < 0.48) {
             const ct = 1 - cliffDist / 0.48;
-            h += ct * ct * 6.8;
-            if (ct > 0.35) this.rockiness[idx] = 0.7;
+            h += ct * ct * 6.8 * riverBankBlend;
+            if (ct > 0.35 && riverBankBlend > 0.5) this.rockiness[idx] = 0.7;
           }
           const hillDist = Math.hypot(nx - 0.52, nz - 0.48);
           if (hillDist < 0.55) {
             const ht = 1 - hillDist / 0.55;
-            h += ht * ht * 4.2;
+            h += ht * ht * 4.2 * riverBankBlend;
           }
         } else if (type === 'palace') {
           // Mountain Fortress & Terraced Valley (북악산 배경의 산성·행궁 지형)
