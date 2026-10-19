@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="ko" data-sheet="hanji">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>와유산수 (臥遊山水) — 책상 위의 작은 한국 전통 마을 디오라마</title>
+  <meta name="description" content="회전하는 목조 좌대 위에 산과 강을 빚고, 붓으로 구역을 그리면 기와집·초가집·정자·돌담·소나무 숲이 절로 자라나는 수묵담채 디오라마 빌더">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Nanum+Myeongjo:wght@400;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23ede1c5'/%3E%3Cpath d='M10 46 32 54 54 46 32 38Z' fill='%23d5be90' stroke='%232b1e14' stroke-width='2.2'/%3E%3Cpath d='M16 34c8-2 14-8 16-12 2 4 8 10 16 12' fill='%233d464d' stroke='%232b1e14' stroke-width='2.2'/%3E%3Cpath d='M22 34v10h20V34' fill='%23f5ebd6' stroke='%232b1e14' stroke-width='2'/%3E%3Crect x='46' y='12' width='8' height='12' rx='1' fill='%23a62c22'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+  <!-- 3D WebGL Canvas -->
+  <canvas id="cv" tabindex="0" aria-label="와유산수 3D 디오라마 캔버스"></canvas>
+
+  <!-- 2D Ink & Brush Overlay Canvas -->
+  <canvas id="inkLayer"></canvas>
+
+  <!-- Floating Zone Ribbon Labels -->
+  <div id="labels"></div>
+
+  <!-- Traditional Painting Frame & Corner Ornaments -->
+  <div class="frame">
+    <i class="corner tl"></i>
+    <i class="corner tr"></i>
+    <i class="corner bl"></i>
+    <i class="corner br"></i>
+  </div>
+
+  <!-- Top-Left Cartouche (화제 畵題 & 낙관) -->
+  <header class="ui cartouche">
+    <div class="eyebrow">규장각 화원 화첩 · 臥遊山水圖</div>
+    <div class="title-row">
+      <h1>와유산수</h1>
+      <span class="seal-mark" title="와유인(臥遊印)">臥遊</span>
+    </div>
+    <div class="rule"></div>
+    <p class="sub-motto" id="poemLine">강산을 빚고 붓으로 터를 두르니 마을이 절로 피어나네</p>
+  </header>
+
+  <!-- Left Toolbar (화구함 / 조형 도구) -->
+  <nav class="ui tools" aria-label="조형 도구">
+    <button type="button" class="tool" data-tool="zone" aria-pressed="true" title="터 그리기 (단축키 1)">
+      <svg viewBox="0 0 28 28"><path d="M4 15c5-2 8-6 10-9 2 3 5 7 10 9"/><path d="M7 14v9h14v-9"/><path d="M12 23v-5h4v5"/><path d="M3 23h22" stroke-dasharray="2 2"/></svg>
+      <span>마을·터</span>
+      <kbd>1</kbd>
+    </button>
+    <button type="button" class="tool" data-tool="terrain" aria-pressed="false" title="산수 지형 빚기 (단축키 2)">
+      <svg viewBox="0 0 28 28"><path d="M3 22 11 9l5 7 4-5 5 11Z"/><path d="M3 25c4-1.5 8 1.5 11 0s7-1.5 11 0"/></svg>
+      <span>산수·지형</span>
+      <kbd>2</kbd>
+    </button>
+    <button type="button" class="tool" data-tool="road" aria-pressed="false" title="길과 다리 놓기 (단축키 3)">
+      <svg viewBox="0 0 28 28"><path d="M6 24c1-7 4-10 8-12s7-5 8-9"/><path d="M11 25c1-5 3-8 6-10s5-4 6-8" stroke-dasharray="2.5 2.5"/></svg>
+      <span>길·홍예교</span>
+      <kbd>3</kbd>
+    </button>
+    <button type="button" class="tool" data-tool="landmark" aria-pressed="false" title="명소·누각 세우기 (단축키 4)">
+      <svg viewBox="0 0 28 28"><path d="M14 3v3M8 9h12l-2 3H10ZM7 14h14l-2 3H9ZM6 19h16l-2 4H8ZM5 25h18"/></svg>
+      <span>명소·누각</span>
+      <kbd>4</kbd>
+    </button>
+    <button type="button" class="tool" data-tool="erase" aria-pressed="false" title="비우기·철거 (단축키 5)">
+      <svg viewBox="0 0 28 28"><path d="M7 18 17 8l5 5-10 10H7Z"/><path d="M5 23h18"/></svg>
+      <span>지우개</span>
+      <kbd>5</kbd>
+    </button>
+    <button type="button" class="tool" data-tool="hand" aria-pressed="false" title="감상·둘러보기 (단축키 6)">
+      <svg viewBox="0 0 28 28"><circle cx="14" cy="14" r="9"/><path d="M14 5v4M14 19v4M5 14h4M19 14h4"/><circle cx="14" cy="14" r="2.5"/></svg>
+      <span>감상·시점</span>
+      <kbd>6</kbd>
+    </button>
+    <button type="button" class="tool menutool" id="openMenuBtn" title="화첩 메뉴 및 풍경 불러오기 (Esc)">
+      <svg viewBox="0 0 28 28"><path d="M6 8h16M6 14h16M6 20h16"/><rect x="4" y="5" width="20" height="18" rx="1"/></svg>
+      <span>화첩·목록</span>
+      <kbd>Esc</kbd>
+    </button>
+  </nav>
+
+  <!-- Left Context Tool Panel -->
+  <aside class="ui panel toolpanel" id="toolPanel">
+    <!-- 1. ZONE PANEL -->
+    <div class="grp" data-panel="zone">
+      <h2><span>마을·구역 그리기</span><small>붓으로 영역 두르기</small></h2>
+      <p class="note">땅 위에 붓으로 구역을 둥글게 그리면 그 안에 한옥, 돌담, 마당, 나무가 스스로 자라납니다.</p>
+
+      <div class="lbl"><span>구역 갈래</span><output id="zoneNameOut">양반 기와촌</output></div>
+      <div class="types" id="zoneTypes">
+        <button type="button" data-zone="giwa" aria-pressed="true">
+          <svg viewBox="0 0 24 24"><path d="M3 12c4-1.5 7-5 9-8 2 3 5 6.5 9 8"/><path d="M6 11v9h12v-9"/></svg>
+          <span>양반 기와촌</span>
+          <i style="background:#3b4652"></i>
+        </button>
+        <button type="button" data-zone="choga" aria-pressed="false">
+          <svg viewBox="0 0 24 24"><path d="M4 13c2-5 6-8 8-8s6 3 8 8Z"/><path d="M6 13v7h12v-7"/></svg>
+          <span>정겨운 초가마을</span>
+          <i style="background:#c89d54"></i>
+        </button>
+        <button type="button" data-zone="palace" aria-pressed="false">
+          <svg viewBox="0 0 24 24"><path d="M3 18h18v3H3zM4 14h16v4H4z"/><path d="M2 10c5-1 8-4 10-6 2 2 5 5 10 6"/></svg>
+          <span>산성·궁궐터</span>
+          <i style="background:#8e3528"></i>
+        </button>
+        <button type="button" data-zone="paddy" aria-pressed="false">
+          <svg viewBox="0 0 24 24"><path d="M3 9h18M3 14h18M3 19h18"/><path d="M7 6v15M12 6v15M17 6v15"/></svg>
+          <span>다랑논·경작지</span>
+          <i style="background:#76964c"></i>
+        </button>
+        <button type="button" data-zone="forest" aria-pressed="false">
+          <svg viewBox="0 0 24 24"><path d="M12 3 6 11h4l-3 6h10l-3-6h4Z"/><path d="M12 17v4"/></svg>
+          <span>소나무·대나무숲</span>
+          <i style="background:#2e5a3c"></i>
+        </button>
+        <button type="button" data-zone="temple" aria-pressed="false">
+          <svg viewBox="0 0 24 24"><path d="M12 2v3M7 7h10M6 11h12M5 15h14M8 15v6h8v-6"/></svg>
+          <span>산사·서원</span>
+          <i style="background:#b56333"></i>
+        </button>
+        <button type="button" data-zone="dock" aria-pressed="false">
+          <svg viewBox="0 0 24 24"><path d="M4 17h16l-3 4H7Z"/><path d="M12 5v12M12 6l6 8H12"/></svg>
+          <span>나루터·포구</span>
+          <i style="background:#4b7888"></i>
+        </button>
+        <button type="button" data-zone="market" aria-pressed="false">
+          <svg viewBox="0 0 24 24"><path d="M3 10 7 5h10l4 5Z"/><path d="M5 10v9M19 10v9M3 19h18"/></svg>
+          <span>저잣거리·장터</span>
+          <i style="background:#b84830"></i>
+        </button>
+      </div>
+
+      <div class="lbl"><span>조성 밀도</span><output id="zoneDensityOut">풍성하게</output></div>
+      <div class="seg" id="zoneDensity">
+        <button type="button" data-density="0.65" aria-pressed="false">여백미</button>
+        <button type="button" data-density="1.0" aria-pressed="true">풍성하게</button>
+        <button type="button" data-density="1.35" aria-pressed="false">빽빽하게</button>
+      </div>
+
+      <label class="chk">
+        <input type="checkbox" id="zoneWallChk" checked>
+        <span>구역 둘레에 돌담·꽃담 쌓기</span>
+      </label>
+
+      <p class="draftinfo" id="zoneDraftInfo">좌클릭 드래그로 땅 위에 구역 윤곽을 그려주세요.</p>
+    </div>
+
+    <!-- 2. TERRAIN PANEL -->
+    <div class="grp" data-panel="terrain" hidden>
+      <h2><span>산수·지형 빚기</span><small>산과 물 다듬기</small></h2>
+      <p class="note">봉우리를 솟구치게 하거나 계곡을 파내어 물길을 내고, 다랑논처럼 단차를 만듭니다.</p>
+
+      <div class="lbl"><span>수법 (브러시 종류)</span></div>
+      <div class="seg" id="terrainModes">
+        <button type="button" data-tmode="raise" aria-pressed="true">산 융기</button>
+        <button type="button" data-tmode="lower" aria-pressed="false">강·연못 파기</button>
+        <button type="button" data-tmode="terrace" aria-pressed="false">계단 단차</button>
+        <button type="button" data-tmode="smooth" aria-pressed="false">다듬기</button>
+        <button type="button" data-tmode="flatten" aria-pressed="false">평지 고르기</button>
+        <button type="button" data-tmode="rock" aria-pressed="false">기암괴석</button>
+      </div>
+
+      <div class="lbl"><span>붓 크기</span><output id="brushSizeOut">4.5칸</output></div>
+      <input type="range" id="brushSize" min="1.5" max="10" step="0.5" value="4.5">
+
+      <div class="lbl"><span>붓 힘 (농도)</span><output id="brushStrengthOut">보통</output></div>
+      <input type="range" id="brushStrength" min="0.2" max="1.5" step="0.1" value="0.7">
+
+      <div class="row">
+        <button type="button" class="btn" id="genSansuBtn">산수 지형 자동 생성</button>
+        <button type="button" class="btn" id="flatWorldBtn">평야로 초기화</button>
+      </div>
+    </div>
+
+    <!-- 3. ROAD PANEL -->
+    <div class="grp" data-panel="road" hidden>
+      <h2><span>길과 홍예교 놓기</span><small>마을길과 돌다리</small></h2>
+      <p class="note">땅 위를 드래그하면 길이 나고, 강이나 연못을 건너면 자동으로 아치형 돌다리나 목교가 세워집니다.</p>
+
+      <div class="lbl"><span>길 종류</span></div>
+      <div class="seg" id="roadTypes">
+        <button type="button" data-rtype="dirt" aria-pressed="true">황토 오솔길</button>
+        <button type="button" data-rtype="stone" aria-pressed="false">박석 돌길</button>
+        <button type="button" data-rtype="royal" aria-pressed="false">어도·대로</button>
+      </div>
+
+      <div class="lbl"><span>물길 다리 양식</span></div>
+      <div class="seg" id="bridgeTypes">
+        <button type="button" data-btype="arch" aria-pressed="true">무지개 돌다리 (홍예교)</button>
+        <button type="button" data-btype="wood" aria-pressed="false">전통 나무다리 (목교)</button>
+      </div>
+    </div>
+
+    <!-- 4. LANDMARK PANEL -->
+    <div class="grp" data-panel="landmark" hidden>
+      <h2><span>명소·누각 세우기</span><small>단독 건축물 배치</small></h2>
+      <p class="note">원하는 지점을 클릭하여 산수화의 중심이 되는 누각, 석탑, 정자, 물레방아를 세웁니다. <kbd>R</kbd> 키로 방향을 회전합니다.</p>
+
+      <div class="lmlist" id="landmarkList">
+        <button type="button" data-lm="gyeonghoeru" aria-pressed="true">
+          <b>수상 대누각 (경회루)</b>
+          <small>연못·평지 위 중층 전각</small>
+        </button>
+        <button type="button" data-lm="pagoda" aria-pressed="false">
+          <b>다층 석탑 (오층석탑)</b>
+          <small>산사와 고원의 화강암 탑</small>
+        </button>
+        <button type="button" data-lm="pavilion" aria-pressed="false">
+          <b>육모정 (전통 정자)</b>
+          <small>산봉우리·강변 풍류 정자</small>
+        </button>
+        <button type="button" data-lm="watermill" aria-pressed="false">
+          <b>물레방앗간</b>
+          <small>회전하는 수차와 초가</small>
+        </button>
+        <button type="button" data-lm="sacredtree" aria-pressed="false">
+          <b>당산나무와 성황당</b>
+          <small>고목 느티나무와 돌무더기</small>
+        </button>
+        <button type="button" data-lm="beacon" aria-pressed="false">
+          <b>산성 봉수대</b>
+          <small>연기가 피어오르는 화두</small>
+        </button>
+        <button type="button" data-lm="hongsalmun" aria-pressed="false">
+          <b>홍살문 (붉은 정문)</b>
+          <small>신성한 구역의 입구</small>
+        </button>
+        <button type="button" data-lm="statue" aria-pressed="false">
+          <b>돌하르방·장승</b>
+          <small>마을 어귀 수호신</small>
+        </button>
+      </div>
+
+      <div class="row">
+        <button type="button" class="btn" id="rotLandmarkBtn">방향 45° 회전 (R)</button>
+      </div>
+    </div>
+
+    <!-- 5. ERASE PANEL -->
+    <div class="grp" data-panel="erase" hidden>
+      <h2><span>비우기·철거</span><small>여백 만들기</small></h2>
+      <p class="note">드래그한 범위 안의 건물, 나무, 돌담, 길을 지워 한지의 여백으로 되돌립니다.</p>
+
+      <div class="lbl"><span>지우개 크기</span><output id="eraseSizeOut">3.5칸</output></div>
+      <input type="range" id="eraseSize" min="1.5" max="8" step="0.5" value="3.5">
+
+      <div class="row">
+        <button type="button" class="btn red" id="clearBuildingsBtn">건물·구역만 모두 비우기</button>
+      </div>
+    </div>
+
+    <!-- 6. HAND / CAMERA PANEL -->
+    <div class="grp" data-panel="hand" hidden>
+      <h2><span>감상·시점 이동</span><small>와유(臥遊) 모드</small></h2>
+      <p class="note">좌클릭 드래그로 좌대를 회전하고, 우클릭 드래그로 화면을 옮기며, 마우스 휠로 가까이 들여다봅니다.</p>
+      <div class="row">
+        <button type="button" class="btn" id="resetCamBtn">정면 시점 초기화</button>
+        <button type="button" class="btn" id="toggleAutoRotBtn" aria-pressed="false">좌대 자동 회전</button>
+      </div>
+      <div class="row">
+        <button type="button" class="btn" id="postcardBtn">화첩 엽서 갈무리 (PNG)</button>
+      </div>
+    </div>
+
+    <!-- Common Quick Actions Footer -->
+    <div class="sect">
+      <div class="row">
+        <button type="button" class="btn" id="undoBtn" title="실행 취소 (Ctrl+Z)">되돌리기</button>
+        <button type="button" class="btn" id="timelapseBtn" title="처음부터 마을이 자라나는 과정을 재생합니다">화첩 타임랩스</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Right Panel: Environment, Seasons, Weather & Turntable Settings -->
+  <details class="ui panel viewpanel" open>
+    <summary><span>절기·풍경·좌대</span><small>화폭 설정</small></summary>
+    <div class="grp">
+      <div class="lbl"><span>사계절 (절기)</span></div>
+      <div class="seg" id="seasons">
+        <button type="button" data-season="spring" aria-pressed="false">봄 (매화)</button>
+        <button type="button" data-season="summer" aria-pressed="true">여름 (녹음)</button>
+        <button type="button" data-season="autumn" aria-pressed="false">가을 (단풍)</button>
+        <button type="button" data-season="winter" aria-pressed="false">겨울 (설경)</button>
+      </div>
+
+      <div class="lbl"><span>시각 (주야)</span></div>
+      <div class="seg" id="daytimes">
+        <button type="button" data-time="dawn" aria-pressed="false">새벽 안개</button>
+        <button type="button" data-time="day" aria-pressed="true">한낮 담채</button>
+        <button type="button" data-time="sunset" aria-pressed="false">석양 노을</button>
+        <button type="button" data-time="night" aria-pressed="false">달밤 호롱불</button>
+      </div>
+
+      <div class="lbl"><span>기상 (날씨)</span></div>
+      <div class="seg" id="weathers">
+        <button type="button" data-weather="clear" aria-pressed="true">맑음</button>
+        <button type="button" data-weather="mist" aria-pressed="false">산안개(운해)</button>
+        <button type="button" data-weather="rain" aria-pressed="false">보슬비</button>
+        <button type="button" data-weather="snow" aria-pressed="false">함박눈</button>
+        <button type="button" data-weather="blossom" aria-pressed="false">꽃비</button>
+        <button type="button" data-weather="rainbow" aria-pressed="false">무지개</button>
+      </div>
+
+      <div class="sect">
+        <div class="lbl"><span>화폭 바탕지</span></div>
+        <div class="seg" id="sheets">
+          <button type="button" data-sheet="hanji" aria-pressed="true">고색 한지</button>
+          <button type="button" data-sheet="silk" aria-pressed="false">비단 화폭</button>
+          <button type="button" data-sheet="ink" aria-pressed="false">수묵 야경지</button>
+        </div>
+
+        <div class="lbl"><span>목조 좌대 모양·크기</span></div>
+        <div class="seg" id="worldShapes">
+          <button type="button" data-shape="round" aria-pressed="true">원형 반(圓盤)</button>
+          <button type="button" data-shape="square" aria-pressed="false">방형 반(方盤)</button>
+        </div>
+        <div class="seg" id="worldSizes">
+          <button type="button" data-size="small" aria-pressed="false">소품 (Small)</button>
+          <button type="button" data-size="medium" aria-pressed="true">중품 (Medium)</button>
+          <button type="button" data-size="large" aria-pressed="false">대작 (Large)</button>
+        </div>
+      </div>
+
+      <div class="sect">
+        <label class="chk">
+          <input type="checkbox" id="waterChk" checked>
+          <span>강물·연못 수면 채우기</span>
+        </label>
+        <label class="chk">
+          <input type="checkbox" id="inkEdgeChk" checked>
+          <span>수묵 필선(묵선 윤곽) 효과</span>
+        </label>
+        <label class="chk">
+          <input type="checkbox" id="labelsChk" checked>
+          <span>마을 현판·지명 표시</span>
+        </label>
+        <label class="chk">
+          <input type="checkbox" id="lifeChk" checked>
+          <span>행인·나룻배·학·굴뚝 연기</span>
+        </label>
+        <label class="chk">
+          <input type="checkbox" id="audioChk">
+          <span>국악 풍경·가야금 자연음 (소리)</span>
+        </label>
+      </div>
+    </div>
+  </details>
+
+  <!-- Bottom Center Hint Bar -->
+  <div class="ui hint" id="hintBar">
+    <b>좌클릭 드래그</b> 구역/지형 그리기 · <b>우클릭 드래그</b> 시점 회전 · <b>휠</b> 확대/축소 · <b>스페이스바</b> 시점 이동
+  </div>
+
+  <!-- Bottom Right Architect's Stamp / Title Block (화첩 기록 인장) -->
+  <table class="ui stamp" aria-label="디오라마 화첩 현황">
+    <tbody>
+      <tr>
+        <td class="k">화제 (작품명)</td>
+        <td class="big" colspan="3" id="stampTitle">청풍명월도 (淸風明月圖)</td>
+      </tr>
+      <tr>
+        <td class="k">가옥·누각</td>
+        <td class="num" id="statBuildings">0채</td>
+        <td class="k">수목·숲</td>
+        <td class="num" id="statTrees">0그루</td>
+      </tr>
+      <tr>
+        <td class="k">거주 백성</td>
+        <td class="num" id="statPop">0명</td>
+        <td class="k">조성 구역</td>
+        <td class="num" id="statZones">0곳</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Toast Notification -->
+  <div class="ui toast" id="toast" data-off>화첩을 펼쳤습니다.</div>
+
+  <!-- Modal Menu (화첩 목록 & 프리셋 불러오기) -->
+  <div class="ui menu" id="menuOverlay" hidden>
+    <div class="menucard">
+      <div class="menuhead">
+        <div class="eyebrow">조선 산수 디오라마 화첩</div>
+        <h2>와유산수 (臥遊山水)</h2>
+        <div class="rule"></div>
+      </div>
+
+      <p class="note">책상 위 회전 좌대에 작은 산수화 속 고을을 지어보세요. 아래 명승지 초본을 불러오거나 새 화폭을 펼칠 수 있습니다.</p>
+
+      <div class="msect first">
+        <div class="lbl"><span>명승지 초본 (추천 템플릿 바로 불러오기)</span></div>
+        <div class="mpair mTpl">
+          <button type="button" class="btn" data-preset="andong">안동 하회마을 (강변 기와·초가)</button>
+          <button type="button" class="btn" data-preset="palace">산성 행궁과 다랑논 고을</button>
+          <button type="button" class="btn" data-preset="temple">깊은 산사와 대나무 협곡</button>
+          <button type="button" class="btn" data-preset="port">황포돛배 뜨는 나루터 장터</button>
+        </div>
+      </div>
+
+      <div class="msect">
+        <div class="lbl"><span>화폭 관리</span></div>
+        <div class="mpair">
+          <button type="button" class="btn" id="saveJsonBtn">화첩 파일 저장 (.json)</button>
+          <button type="button" class="btn" id="loadJsonBtn">화첩 파일 열기</button>
+          <input type="file" id="loadJsonInput" accept=".json" hidden>
+        </div>
+        <div class="mpair">
+          <button type="button" class="btn" id="menuScreenshotBtn">엽서 사진 찍기 (PNG)</button>
+          <button type="button" class="btn red" id="menuClearAllBtn">백지로 초기화</button>
+        </div>
+      </div>
+
+      <button type="button" class="mitem back" id="closeMenuBtn">
+        <b>화폭으로 돌아가기 (계속 그리기)</b>
+      </button>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
