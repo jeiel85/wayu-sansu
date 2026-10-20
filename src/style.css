@@ -269,6 +269,21 @@ button:focus-visible, input:focus-visible, summary:focus-visible {
   margin-top: 8px;
 }
 
+.pwatool {
+  border-color: var(--rubric);
+  color: var(--rubric);
+}
+
+.pwatool:hover {
+  background: var(--rubric);
+  color: #f9f1e1;
+  border-color: var(--rubric);
+}
+
+.pwatool:hover kbd {
+  color: #f9f1e1;
+}
+
 /* Panels */
 .panel {
   background: color-mix(in srgb, var(--paper-2) 94%, transparent);
@@ -445,6 +460,12 @@ button:focus-visible, input:focus-visible, summary:focus-visible {
 
 .btn:hover {
   background: var(--paper-3);
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+  pointer-events: none;
 }
 
 .btn:active {

@@ -967,6 +967,61 @@ class DioramaApp {
       if (menuOverlay) menuOverlay.hidden = true;
       this.showToast('화폭을 깨끗한 백지로 초기화했습니다.');
     });
+
+    // PWA Install Prompt Handling
+    this.deferredInstallPrompt = null;
+    const installToolBtn = document.getElementById('installPwaToolBtn');
+    const menuInstallBtn = document.getElementById('menuInstallPwaBtn');
+
+    const isStandalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      window.navigator.standalone === true;
+
+    if (isStandalone && menuInstallBtn) {
+      menuInstallBtn.textContent = '앱 설치 완료 (실행 중)';
+      menuInstallBtn.disabled = true;
+    }
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      this.deferredInstallPrompt = e;
+      if (installToolBtn) installToolBtn.hidden = false;
+      if (menuInstallBtn) {
+        menuInstallBtn.textContent = '앱으로 설치하기 (PWA)';
+        menuInstallBtn.disabled = false;
+      }
+    });
+
+    window.addEventListener('appinstalled', () => {
+      this.deferredInstallPrompt = null;
+      if (installToolBtn) installToolBtn.hidden = true;
+      if (menuInstallBtn) {
+        menuInstallBtn.textContent = '앱 설치 완료';
+        menuInstallBtn.disabled = true;
+      }
+      this.showToast('와유산수 앱이 기기에 설치되었습니다!');
+    });
+
+    const triggerPwaInstall = async () => {
+      if (this.deferredInstallPrompt) {
+        this.deferredInstallPrompt.prompt();
+        const { outcome } = await this.deferredInstallPrompt.userChoice;
+        if (outcome === 'accepted') {
+          this.deferredInstallPrompt = null;
+          if (installToolBtn) installToolBtn.hidden = true;
+        }
+      } else if (
+        window.matchMedia('(display-mode: standalone)').matches ||
+        window.navigator.standalone === true
+      ) {
+        this.showToast('이미 설치된 와유산수 앱으로 실행 중입니다.');
+      } else {
+        this.showToast('브라우저 주소창의 [앱 설치] 아이콘 또는 공유 메뉴의 [홈 화면에 추가]를 눌러 설치할 수 있습니다.');
+      }
+    };
+
+    installToolBtn?.addEventListener('click', triggerPwaInstall);
+    menuInstallBtn?.addEventListener('click', triggerPwaInstall);
   }
 
   animate() {
@@ -999,3 +1054,11 @@ class DioramaApp {
 window.addEventListener('DOMContentLoaded', () => {
   window.__dioramaApp = new DioramaApp();
 });
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch((err) => {
+      console.warn('Service Worker registration failed:', err);
+    });
+  });
+}

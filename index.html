@@ -8,7 +8,15 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Nanum+Myeongjo:wght@400;700;800&display=swap" rel="stylesheet">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23ede1c5'/%3E%3Cpath d='M10 46 32 54 54 46 32 38Z' fill='%23d5be90' stroke='%232b1e14' stroke-width='2.2'/%3E%3Cpath d='M16 34c8-2 14-8 16-12 2 4 8 10 16 12' fill='%233d464d' stroke='%232b1e14' stroke-width='2.2'/%3E%3Cpath d='M22 34v10h20V34' fill='%23f5ebd6' stroke='%232b1e14' stroke-width='2'/%3E%3Crect x='46' y='12' width='8' height='12' rx='1' fill='%23a62c22'/%3E%3C/svg%3E">
+  <meta name="theme-color" content="#ede1c5">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="와유산수">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" type="image/svg+xml" href="./icons/icon.svg">
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
   <link rel="stylesheet" href="/src/style.css">
 </head>
 <body>
@@ -76,6 +84,11 @@
       <svg viewBox="0 0 28 28"><path d="M6 8h16M6 14h16M6 20h16"/><rect x="4" y="5" width="20" height="18" rx="1"/></svg>
       <span>화첩·목록</span>
       <kbd>Esc</kbd>
+    </button>
+    <button type="button" class="tool pwatool" id="installPwaToolBtn" title="와유산수 앱 설치하기 (PWA)" hidden>
+      <svg viewBox="0 0 28 28"><path d="M14 5v12M9 13l5 5 5-5"/><path d="M5 19v3a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1v-3"/></svg>
+      <span>앱 설치</span>
+      <kbd>PWA</kbd>
     </button>
   </nav>
 
@@ -407,6 +420,9 @@
         <div class="mpair">
           <button type="button" class="btn" id="menuScreenshotBtn">엽서 사진 찍기 (PNG)</button>
           <button type="button" class="btn red" id="menuClearAllBtn">백지로 초기화</button>
+        </div>
+        <div class="mpair">
+          <button type="button" class="btn" id="menuInstallPwaBtn">앱으로 설치하기 (PWA)</button>
         </div>
       </div>
 

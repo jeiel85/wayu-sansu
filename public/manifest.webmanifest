@@ -1,0 +1,40 @@
+{
+  "id": "./",
+  "name": "와유산수 (臥遊山水) — 책상 위의 작은 한국 전통 마을 디오라마",
+  "short_name": "와유산수",
+  "description": "회전하는 목조 좌대 위에 산과 강을 빚고, 붓으로 구역을 그리면 기와집·초가집·정자·돌담·소나무 숲이 절로 자라나는 수묵담채 디오라마 빌더",
+  "lang": "ko",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#ebe0c5",
+  "theme_color": "#ede1c5",
+  "categories": ["games", "entertainment", "art", "creativity"],
+  "icons": [
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "./icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
