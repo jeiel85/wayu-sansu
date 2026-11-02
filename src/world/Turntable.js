@@ -2,6 +2,22 @@ import * as THREE from 'three';
 
 export const WATER_LEVEL = 0.0;
 
+// 개별 오브젝트가 만든 지오메트리만 해제한다. 재질은 MaterialBank 공유분이 많아 건드리지 않는다.
+export function disposeGeometries(obj) {
+  obj.traverse((o) => {
+    if (o.geometry) o.geometry.dispose();
+  });
+}
+
+export function disposeTree(obj) {
+  obj.traverse((o) => {
+    if (o.geometry) o.geometry.dispose();
+    if (o.material) {
+      (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => m.dispose());
+    }
+  });
+}
+
 export class Turntable {
   constructor(scene) {
     this.scene = scene;
@@ -90,10 +106,13 @@ export class Turntable {
   }
 
   buildMeshes() {
-    // Clear existing
-    while (this.group.children.length > 0) {
-      const child = this.group.children[0];
-      this.group.remove(child);
+    // 지형 관련 메시만 교체한다. 같은 group에 붙어 있는 구역·길·날씨 그룹은 유지해야 한다.
+    for (const key of ['terrainMesh', 'skirtMesh', 'waterMesh', 'plinthGroup']) {
+      const obj = this[key];
+      if (!obj) continue;
+      this.group.remove(obj);
+      disposeTree(obj);
+      this[key] = null;
     }
 
     const R = this.radius;
@@ -199,16 +218,13 @@ export class Turntable {
     // 4. Wooden Carved Turntable Stand (전통 목조 좌대)
     this.buildPlinth();
 
-    if (this.brushRing) {
-      this.group.add(this.brushRing);
-    }
-
     this.updateTerrainGeometry();
   }
 
   buildSkirtMesh() {
     if (this.skirtMesh) {
       this.group.remove(this.skirtMesh);
+      disposeTree(this.skirtMesh);
     }
     const N = this.gridRes;
     const baseDepth = -2.2;
@@ -425,6 +441,23 @@ export class Turntable {
           if (h > WATER_LEVEL + 0.15) {
             this.heights[idx] = Math.round(h * 2.2) / 2.2;
           }
+        }
+      }
+    }
+    this.updateTerrainGeometry();
+  }
+
+  // 남아 있는 논 구역만으로 논 마스크를 다시 칠한다(계단식 높이는 이미 반영돼 있으므로 다시 깎지 않음).
+  rebuildPaddyMask(polygons) {
+    this.paddyMask.fill(0);
+    const R = this.radius;
+    const N = this.gridRes;
+    for (const polygon of polygons) {
+      for (let iz = 0; iz <= N; iz++) {
+        for (let ix = 0; ix <= N; ix++) {
+          const vx = ((ix / N) * 2 - 1) * R;
+          const vz = ((iz / N) * 2 - 1) * R;
+          if (this.pointInPoly(vx, vz, polygon)) this.paddyMask[iz * (N + 1) + ix] = 1;
         }
       }
     }

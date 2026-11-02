@@ -1,6 +1,13 @@
 import * as THREE from 'three';
-import { WATER_LEVEL } from './Turntable.js';
+import { WATER_LEVEL, disposeGeometries } from './Turntable.js';
 import { createBridge } from './ProceduralModels.js';
+
+function roadPaint(roadType) {
+  return {
+    typeCode: roadType === 'stone' ? 2 : roadType === 'royal' ? 3 : 1,
+    widthRadius: roadType === 'royal' ? 1.25 : roadType === 'stone' ? 0.95 : 0.78
+  };
+}
 
 export class RoadSystem {
   constructor(turntable, mats) {
@@ -32,14 +39,11 @@ export class RoadSystem {
     }
     pts.push(rawPoints[rawPoints.length - 1]);
 
-    const typeCode = roadType === 'stone' ? 2 : roadType === 'royal' ? 3 : 1;
-    const widthRadius = roadType === 'royal' ? 1.25 : roadType === 'stone' ? 0.95 : 0.78;
+    const { widthRadius } = roadPaint(roadType);
     const meshes = [];
 
     // 1. Paint road onto terrain vertex mask
-    for (const p of pts) {
-      this.turntable.paintRoadMask(p.x, p.z, widthRadius, typeCode);
-    }
+    this.paintRoad(pts, roadType);
     this.turntable.updateTerrainGeometry();
 
     // 2. Detect water crossings & build automatic bridges (물 위를 건너면 자동으로 홍예교/목교 생성)
@@ -104,7 +108,28 @@ export class RoadSystem {
     return rec;
   }
 
+  paintRoad(pts, roadType) {
+    const { typeCode, widthRadius } = roadPaint(roadType);
+    for (const p of pts) {
+      this.turntable.paintRoadMask(p.x, p.z, widthRadius, typeCode);
+    }
+  }
+
+  removeRoad(road) {
+    for (const m of road.meshes) {
+      this.roadsGroup.remove(m.mesh);
+      disposeGeometries(m.mesh);
+    }
+    const idx = this.roads.indexOf(road);
+    if (idx !== -1) this.roads.splice(idx, 1);
+    // 지운 길의 흙·돌 색이 지형에 남지 않도록 남은 길만 다시 칠한다
+    this.turntable.roadMask.fill(0);
+    for (const r of this.roads) this.paintRoad(r.points, r.roadType);
+    this.turntable.updateTerrainGeometry();
+  }
+
   eraseAt(x, z, radius) {
+    if (this.roads.length === 0) return;
     this.turntable.paintRoadMask(x, z, radius, 0);
     this.turntable.updateTerrainGeometry();
 
@@ -113,6 +138,7 @@ export class RoadSystem {
         const m = road.meshes[i];
         if (Math.hypot(m.x - x, m.z - z) <= radius + 1.0) {
           this.roadsGroup.remove(m.mesh);
+          disposeGeometries(m.mesh);
           road.meshes.splice(i, 1);
         }
       }
@@ -121,7 +147,9 @@ export class RoadSystem {
 
   clearAll() {
     while (this.roadsGroup.children.length > 0) {
-      this.roadsGroup.remove(this.roadsGroup.children[0]);
+      const child = this.roadsGroup.children[0];
+      this.roadsGroup.remove(child);
+      disposeGeometries(child);
     }
     this.roads = [];
     this.turntable.roadMask.fill(0);

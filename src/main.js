@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { Turntable, WATER_LEVEL } from './world/Turntable.js';
+import { Turntable, WATER_LEVEL, disposeGeometries } from './world/Turntable.js';
 import { MaterialBank, createLandmark } from './world/ProceduralModels.js';
 import { ZoneSystem, ZONE_TYPE_LABELS } from './world/ZoneSystem.js';
 import { RoadSystem } from './world/RoadSystem.js';
@@ -154,7 +154,10 @@ class DioramaApp {
         MIDDLE: THREE.MOUSE.DOLLY,
         RIGHT: THREE.MOUSE.PAN
       };
+      this.controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
     } else {
+      // 그리기 도구에서는 한 손가락 드래그가 붓질이므로 카메라를 돌리지 않는다
+      this.controls.touches = { ONE: null, TWO: THREE.TOUCH.DOLLY_PAN };
       this.controls.mouseButtons = {
         LEFT: null,
         MIDDLE: THREE.MOUSE.PAN,
@@ -166,6 +169,7 @@ class DioramaApp {
   updateLandmarkGhost() {
     if (this.landmarkGhost) {
       this.turntable.group.remove(this.landmarkGhost);
+      disposeGeometries(this.landmarkGhost);
       this.landmarkGhost = null;
     }
     if (this.activeTool === 'landmark') {
@@ -253,14 +257,20 @@ class DioramaApp {
     window.addEventListener('resize', () => {
       this.camera.aspect = window.innerWidth / window.innerHeight;
       this.camera.updateProjectionMatrix();
+      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
       this.renderer.setSize(window.innerWidth, window.innerHeight);
       this.inkRenderer.resize();
     });
 
     window.addEventListener('keydown', (e) => {
-      if (e.code === 'Space' && !this.spacePressed) {
-        this.spacePressed = true;
-        this.updateOrbitMouseButtons();
+      const typing = e.target instanceof HTMLElement && e.target.matches('input, textarea, select, [contenteditable]');
+      if (e.code === 'Space' && !typing) {
+        // 포커스가 남은 버튼이 스페이스로 다시 눌리지 않게 막는다
+        e.preventDefault();
+        if (!this.spacePressed) {
+          this.spacePressed = true;
+          this.updateOrbitMouseButtons();
+        }
       } else if (e.key === 'Escape') {
         const menu = document.getElementById('menuOverlay');
         if (menu) menu.hidden = !menu.hidden;
@@ -282,8 +292,15 @@ class DioramaApp {
       }
     });
 
+    // 스페이스를 누른 채 창을 벗어나면 keyup이 오지 않는다
+    window.addEventListener('blur', () => {
+      if (!this.spacePressed) return;
+      this.spacePressed = false;
+      this.updateOrbitMouseButtons();
+    });
+
     this.canvas.addEventListener('pointerdown', (e) => {
-      if (e.button !== 0 || this.activeTool === 'hand' || this.spacePressed) return;
+      if (!e.isPrimary || e.button !== 0 || this.activeTool === 'hand' || this.spacePressed) return;
       const pt = this.raycastTerrain(e.clientX, e.clientY);
       if (!pt) return;
 
@@ -394,12 +411,19 @@ class DioramaApp {
     };
 
     window.addEventListener('pointerup', finishStroke);
+    window.addEventListener('pointercancel', finishStroke);
   }
 
   performErase(x, z) {
     const removed = this.zoneSystem.eraseAt(x, z, this.eraseSize);
     this.roadSystem.eraseAt(x, z, this.eraseSize);
     if (removed > 0) {
+      // 통째로 사라진 구역·명소는 기록에서도 빼야 저장·타임랩스에서 되살아나지 않는다
+      this.actionHistory = this.actionHistory.filter((a) => {
+        if (a.kind === 'zone') return this.zoneSystem.zones.includes(a.ref);
+        if (a.kind === 'landmark') return this.zoneSystem.landmarks.includes(a.ref);
+        return true;
+      });
       this.updateStatsUI();
     }
   }
@@ -435,22 +459,13 @@ class DioramaApp {
     }
     const last = this.actionHistory.pop();
     if (last.kind === 'zone' && last.ref) {
-      this.zoneSystem.zonesGroup.remove(last.ref.group);
-      if (last.ref.labelEl) last.ref.labelEl.remove();
-      const idx = this.zoneSystem.zones.indexOf(last.ref);
-      if (idx !== -1) this.zoneSystem.zones.splice(idx, 1);
+      this.zoneSystem.removeZone(last.ref);
       this.showToast(`'${last.ref.name}' 구역을 되돌렸습니다.`);
     } else if (last.kind === 'landmark' && last.ref) {
-      this.zoneSystem.zonesGroup.remove(last.ref.mesh);
-      const idx = this.zoneSystem.landmarks.indexOf(last.ref);
-      if (idx !== -1) this.zoneSystem.landmarks.splice(idx, 1);
+      this.zoneSystem.removeLandmark(last.ref);
       this.showToast('명소 배치를 되돌렸습니다.');
     } else if (last.kind === 'road' && last.ref) {
-      for (const m of last.ref.meshes) {
-        this.roadSystem.roadsGroup.remove(m.mesh);
-      }
-      const idx = this.roadSystem.roads.indexOf(last.ref);
-      if (idx !== -1) this.roadSystem.roads.splice(idx, 1);
+      this.roadSystem.removeRoad(last.ref);
       this.showToast('길 놓기를 되돌렸습니다.');
     }
     this.updateStatsUI();
@@ -463,13 +478,14 @@ class DioramaApp {
       return;
     }
     const savedActions = [...this.actionHistory];
+    this.cancelTimelapse();
     this.zoneSystem.clearAll();
     this.roadSystem.clearAll();
     this.actionHistory = [];
     this.updateStatsUI();
     this.showToast('화첩 타임랩스를 재생합니다...');
 
-    savedActions.forEach((act, idx) => {
+    this.timelapseTimers = savedActions.map((act, idx) =>
       setTimeout(() => {
         if (act.kind === 'zone') {
           const z = this.zoneSystem.createZone(act.polygon, act.zoneType, act.options);
@@ -491,8 +507,14 @@ class DioramaApp {
           }
         }
         this.updateStatsUI();
-      }, idx * 650);
-    });
+      }, idx * 650)
+    );
+  }
+
+  // 재생 중에 다른 장면을 불러오면 남은 단계가 새 장면에 섞여 들어가지 않도록 끊는다
+  cancelTimelapse() {
+    (this.timelapseTimers || []).forEach(clearTimeout);
+    this.timelapseTimers = [];
   }
 
   // Helper to generate circular/oval polygon for presets
@@ -510,6 +532,7 @@ class DioramaApp {
 
   // Load curated Korean landscape & village presets
   loadPreset(presetKey = 'andong', notify = true) {
+    this.cancelTimelapse();
     this.zoneSystem.clearAll();
     this.roadSystem.clearAll();
     this.actionHistory = [];
@@ -687,7 +710,7 @@ class DioramaApp {
         kind: a.kind,
         zoneType: a.zoneType,
         polygon: a.polygon,
-        options: a.options,
+        options: a.kind === 'zone' && a.ref ? { ...a.options, name: a.ref.name } : a.options,
         points: a.points,
         roadType: a.roadType,
         bridgeType: a.bridgeType,
@@ -703,7 +726,8 @@ class DioramaApp {
     a.href = url;
     a.download = `와유산수_화첩기록_${Date.now()}.json`;
     a.click();
-    URL.revokeObjectURL(url);
+    // 즉시 해제하면 일부 브라우저(구형 Safari·Firefox)에서 다운로드가 취소된다
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
     this.showToast('화첩 파일(.json)을 저장했습니다.');
   }
 
@@ -712,11 +736,18 @@ class DioramaApp {
     reader.onload = () => {
       try {
         const data = JSON.parse(reader.result);
+        this.cancelTimelapse();
         this.zoneSystem.clearAll();
         this.roadSystem.clearAll();
         this.actionHistory = [];
 
         this.turntable.setConfig({ shape: data.shape || 'round', sizeKey: data.sizeKey || 'medium' });
+        this.syncPressed('worldShapes', 'data-shape', this.turntable.shape);
+        this.syncPressed('worldSizes', 'data-size', this.turntable.sizeKey);
+        // 절기·시각·기상은 버튼을 눌러 적용하면 조명·날씨·버튼 표시가 한 번에 맞춰진다
+        if (data.season) document.querySelector(`#seasons [data-season="${CSS.escape(data.season)}"]`)?.click();
+        if (data.timeOfDay) document.querySelector(`#daytimes [data-time="${CSS.escape(data.timeOfDay)}"]`)?.click();
+        if (data.weather) document.querySelector(`#weathers [data-weather="${CSS.escape(data.weather)}"]`)?.click();
         if (data.heights && data.heights.length === this.turntable.heights.length) {
           this.turntable.heights.set(data.heights);
         }
@@ -748,7 +779,26 @@ class DioramaApp {
     reader.readAsText(file);
   }
 
+  // 지형을 새로 빚으면 길·논 마스크가 지워지므로 남아 있는 길과 논을 다시 칠한다
+  repaintTerrainMasks() {
+    for (const r of this.roadSystem.roads) this.roadSystem.paintRoad(r.points, r.roadType);
+    this.turntable.rebuildPaddyMask(
+      this.zoneSystem.zones.filter((z) => z.paddyPolygon).map((z) => z.paddyPolygon)
+    );
+  }
+
+  syncPressed(containerId, attrName, val) {
+    document.querySelectorAll(`#${containerId} button[${attrName}]`).forEach((b) => {
+      b.setAttribute('aria-pressed', b.getAttribute(attrName) === val ? 'true' : 'false');
+    });
+  }
+
   bindUI() {
+    // 폰 화면에서는 화폭 설정 패널이 장면과 도구 패널을 덮으므로 접은 채로 시작
+    if (window.matchMedia('(max-width: 520px)').matches) {
+      document.querySelector('.viewpanel')?.removeAttribute('open');
+    }
+
     // 1. Left Tool Selection
     document.querySelectorAll('.tools .tool[data-tool]').forEach((btn) => {
       btn.addEventListener('click', () => this.selectTool(btn.dataset.tool));
@@ -810,12 +860,14 @@ class DioramaApp {
       const presets = ['andong', 'palace', 'temple', 'port'];
       const pick = presets[Math.floor(Math.random() * presets.length)];
       this.turntable.generateLandscape(pick);
+      this.repaintTerrainMasks();
       this.zoneSystem.syncHeightsToTerrain();
       this.showToast('새로운 산수 지형을 빚었습니다.');
     });
 
     document.getElementById('flatWorldBtn')?.addEventListener('click', () => {
       this.turntable.generateLandscape('flat');
+      this.repaintTerrainMasks();
       this.zoneSystem.syncHeightsToTerrain();
       this.showToast('지형을 너른 평야로 골랐습니다.');
     });
@@ -845,6 +897,7 @@ class DioramaApp {
     });
 
     document.getElementById('clearBuildingsBtn')?.addEventListener('click', () => {
+      this.cancelTimelapse();
       this.zoneSystem.clearAll();
       this.roadSystem.clearAll();
       this.actionHistory = [];
@@ -947,6 +1000,8 @@ class DioramaApp {
     document.getElementById('loadJsonBtn')?.addEventListener('click', () => loadInput?.click());
     loadInput?.addEventListener('change', (e) => {
       const file = e.target.files?.[0];
+      // 같은 파일을 다시 골라도 change가 오도록 비운다
+      e.target.value = '';
       if (file) {
         this.loadWorldJSON(file);
         if (menuOverlay) menuOverlay.hidden = true;
@@ -959,6 +1014,7 @@ class DioramaApp {
     });
 
     document.getElementById('menuClearAllBtn')?.addEventListener('click', () => {
+      this.cancelTimelapse();
       this.zoneSystem.clearAll();
       this.roadSystem.clearAll();
       this.turntable.generateLandscape('flat');
@@ -1004,12 +1060,12 @@ class DioramaApp {
 
     const triggerPwaInstall = async () => {
       if (this.deferredInstallPrompt) {
-        this.deferredInstallPrompt.prompt();
-        const { outcome } = await this.deferredInstallPrompt.userChoice;
-        if (outcome === 'accepted') {
-          this.deferredInstallPrompt = null;
-          if (installToolBtn) installToolBtn.hidden = true;
-        }
+        // prompt()는 이벤트당 한 번만 쓸 수 있으므로 결과와 상관없이 비운다
+        const promptEvent = this.deferredInstallPrompt;
+        this.deferredInstallPrompt = null;
+        promptEvent.prompt();
+        const { outcome } = await promptEvent.userChoice;
+        if (outcome === 'accepted' && installToolBtn) installToolBtn.hidden = true;
       } else if (
         window.matchMedia('(display-mode: standalone)').matches ||
         window.navigator.standalone === true
@@ -1055,7 +1111,8 @@ window.addEventListener('DOMContentLoaded', () => {
   window.__dioramaApp = new DioramaApp();
 });
 
-if ('serviceWorker' in navigator) {
+// 개발 서버에서는 /src 모듈이 캐시돼 수정이 늦게 반영되므로 배포 빌드에서만 등록한다
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch((err) => {
       console.warn('Service Worker registration failed:', err);

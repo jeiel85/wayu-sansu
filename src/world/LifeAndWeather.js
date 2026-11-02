@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { WATER_LEVEL } from './Turntable.js';
+import { WATER_LEVEL, disposeTree } from './Turntable.js';
 
 export class LifeAndWeather {
   constructor(turntable, zoneSystem, roadSystem) {
@@ -210,6 +210,7 @@ export class LifeAndWeather {
     while (this.villagers.length > targetCount) {
       const v = this.villagers.pop();
       this.group.remove(v.mesh);
+      disposeTree(v.mesh);
     }
   }
 
@@ -290,7 +291,8 @@ export class LifeAndWeather {
       opacity: 0.48,
       depthWrite: false
     });
-    const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.14, 6, 6), mat);
+    if (!this.smokeGeom) this.smokeGeom = new THREE.SphereGeometry(0.14, 6, 6);
+    const mesh = new THREE.Mesh(this.smokeGeom, mat);
     mesh.position.set(x, y, z);
     mesh.visible = this.lifeEnabled;
     this.group.add(mesh);
