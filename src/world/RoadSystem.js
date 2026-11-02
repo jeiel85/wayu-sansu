@@ -103,7 +103,8 @@ export class RoadSystem {
       }
     }
 
-    const rec = { points: pts, roadType, bridgeType, meshes };
+    // erasures: 이 길이 생긴 뒤 지우개가 지나간 자리. 마스크를 다시 칠할 때 그대로 재적용한다.
+    const rec = { points: pts, roadType, bridgeType, meshes, erasures: [] };
     this.roads.push(rec);
     return rec;
   }
@@ -123,9 +124,17 @@ export class RoadSystem {
     const idx = this.roads.indexOf(road);
     if (idx !== -1) this.roads.splice(idx, 1);
     // 지운 길의 흙·돌 색이 지형에 남지 않도록 남은 길만 다시 칠한다
-    this.turntable.roadMask.fill(0);
-    for (const r of this.roads) this.paintRoad(r.points, r.roadType);
+    this.repaintAll();
     this.turntable.updateTerrainGeometry();
+  }
+
+  // 길을 만든 순서대로 칠하고 각 길 이후의 지우기를 덮어 써서, 지운 구간이 되살아나지 않게 한다
+  repaintAll() {
+    this.turntable.roadMask.fill(0);
+    for (const r of this.roads) {
+      this.paintRoad(r.points, r.roadType);
+      for (const e of r.erasures) this.turntable.paintRoadMask(e.x, e.z, e.radius, 0);
+    }
   }
 
   eraseAt(x, z, radius) {
@@ -134,6 +143,11 @@ export class RoadSystem {
     this.turntable.updateTerrainGeometry();
 
     for (const road of this.roads) {
+      // 이 길 폭에 닿는 지우기만 기록한다(드래그마다 모든 길에 쌓이지 않게)
+      const reach = radius + roadPaint(road.roadType).widthRadius;
+      if (road.points.some((p) => Math.hypot(p.x - x, p.z - z) <= reach)) {
+        road.erasures.push({ x, z, radius });
+      }
       for (let i = road.meshes.length - 1; i >= 0; i--) {
         const m = road.meshes[i];
         if (Math.hypot(m.x - x, m.z - z) <= radius + 1.0) {

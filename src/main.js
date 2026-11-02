@@ -781,7 +781,7 @@ class DioramaApp {
 
   // 지형을 새로 빚으면 길·논 마스크가 지워지므로 남아 있는 길과 논을 다시 칠한다
   repaintTerrainMasks() {
-    for (const r of this.roadSystem.roads) this.roadSystem.paintRoad(r.points, r.roadType);
+    this.roadSystem.repaintAll();
     this.turntable.rebuildPaddyMask(
       this.zoneSystem.zones.filter((z) => z.paddyPolygon).map((z) => z.paddyPolygon)
     );
