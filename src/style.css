@@ -883,4 +883,46 @@ input[type="range"]::-webkit-slider-thumb {
     width: auto;
     max-height: 36vh;
   }
+  .viewpanel {
+    z-index: 6;
+    max-height: calc(100vh - 140px - var(--e-t) - var(--e-b));
+  }
+}
+
+/* 좁은 폰 화면: 도구 막대를 화면 폭에 맞추고 화폭 설정 패널을 제목 아래로 내림 */
+@media (max-width: 520px) {
+  .cartouche h1 { font-size: 24px; }
+  .cartouche .rule { width: 150px; }
+  .cartouche .sub-motto { display: none; }
+  .tools {
+    left: calc(14px + var(--e-l));
+    right: calc(14px + var(--e-r));
+    transform: none;
+    gap: 3px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tools::-webkit-scrollbar { display: none; }
+  .tool {
+    flex: 1 0 42px;
+    width: auto;
+    min-width: 0;
+    padding: 6px 1px 5px;
+  }
+  .tool svg { width: 21px; height: 21px; }
+  .tool span { font-size: 10px; letter-spacing: -0.02em; word-break: keep-all; text-align: center; }
+  .tool kbd { display: none; }
+  .toolpanel {
+    left: calc(14px + var(--e-l));
+    right: calc(14px + var(--e-r));
+    bottom: calc(80px + var(--e-b));
+  }
+  .viewpanel {
+    top: calc(92px + var(--e-t));
+    left: calc(14px + var(--e-l));
+    right: calc(14px + var(--e-r));
+    width: auto;
+    max-height: calc(100vh - 190px - var(--e-t) - var(--e-b));
+  }
+  .toast { max-width: calc(100vw - 48px); }
 }

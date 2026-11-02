@@ -1,4 +1,8 @@
-const CACHE_NAME = 'wayu-sansu-pwa-v1';
+// 빌드 시 vite.config.js의 swPrecacheManifest가 아래 두 줄을 채운다
+const BUILD_ID = 'dev';
+const BUILD_ASSETS = [];
+
+const CACHE_NAME = `wayu-sansu-pwa-${BUILD_ID}`;
 const PRECACHE_ASSETS = [
   './',
   './index.html',
@@ -7,7 +11,8 @@ const PRECACHE_ASSETS = [
   './icons/icon-512.png',
   './icons/icon-maskable-512.png',
   './icons/apple-touch-icon.png',
-  './icons/icon.svg'
+  './icons/icon.svg',
+  ...BUILD_ASSETS
 ];
 
 self.addEventListener('install', (event) => {
@@ -53,8 +58,10 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          }
           return response;
         })
         .catch(() =>

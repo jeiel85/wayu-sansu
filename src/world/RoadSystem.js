@@ -1,6 +1,13 @@
 import * as THREE from 'three';
-import { WATER_LEVEL } from './Turntable.js';
+import { WATER_LEVEL, disposeGeometries } from './Turntable.js';
 import { createBridge } from './ProceduralModels.js';
+
+function roadPaint(roadType) {
+  return {
+    typeCode: roadType === 'stone' ? 2 : roadType === 'royal' ? 3 : 1,
+    widthRadius: roadType === 'royal' ? 1.25 : roadType === 'stone' ? 0.95 : 0.78
+  };
+}
 
 export class RoadSystem {
   constructor(turntable, mats) {
@@ -32,14 +39,11 @@ export class RoadSystem {
     }
     pts.push(rawPoints[rawPoints.length - 1]);
 
-    const typeCode = roadType === 'stone' ? 2 : roadType === 'royal' ? 3 : 1;
-    const widthRadius = roadType === 'royal' ? 1.25 : roadType === 'stone' ? 0.95 : 0.78;
+    const { widthRadius } = roadPaint(roadType);
     const meshes = [];
 
     // 1. Paint road onto terrain vertex mask
-    for (const p of pts) {
-      this.turntable.paintRoadMask(p.x, p.z, widthRadius, typeCode);
-    }
+    this.paintRoad(pts, roadType);
     this.turntable.updateTerrainGeometry();
 
     // 2. Detect water crossings & build automatic bridges (물 위를 건너면 자동으로 홍예교/목교 생성)
@@ -99,20 +103,56 @@ export class RoadSystem {
       }
     }
 
-    const rec = { points: pts, roadType, bridgeType, meshes };
+    // erasures: 이 길이 생긴 뒤 지우개가 지나간 자리. 마스크를 다시 칠할 때 그대로 재적용한다.
+    const rec = { points: pts, roadType, bridgeType, meshes, erasures: [] };
     this.roads.push(rec);
     return rec;
   }
 
+  paintRoad(pts, roadType) {
+    const { typeCode, widthRadius } = roadPaint(roadType);
+    for (const p of pts) {
+      this.turntable.paintRoadMask(p.x, p.z, widthRadius, typeCode);
+    }
+  }
+
+  removeRoad(road) {
+    for (const m of road.meshes) {
+      this.roadsGroup.remove(m.mesh);
+      disposeGeometries(m.mesh);
+    }
+    const idx = this.roads.indexOf(road);
+    if (idx !== -1) this.roads.splice(idx, 1);
+    // 지운 길의 흙·돌 색이 지형에 남지 않도록 남은 길만 다시 칠한다
+    this.repaintAll();
+    this.turntable.updateTerrainGeometry();
+  }
+
+  // 길을 만든 순서대로 칠하고 각 길 이후의 지우기를 덮어 써서, 지운 구간이 되살아나지 않게 한다
+  repaintAll() {
+    this.turntable.roadMask.fill(0);
+    for (const r of this.roads) {
+      this.paintRoad(r.points, r.roadType);
+      for (const e of r.erasures) this.turntable.paintRoadMask(e.x, e.z, e.radius, 0);
+    }
+  }
+
   eraseAt(x, z, radius) {
+    if (this.roads.length === 0) return;
     this.turntable.paintRoadMask(x, z, radius, 0);
     this.turntable.updateTerrainGeometry();
 
     for (const road of this.roads) {
+      // 이 길 폭에 닿는 지우기만 기록한다(드래그마다 모든 길에 쌓이지 않게)
+      const reach = radius + roadPaint(road.roadType).widthRadius;
+      if (road.points.some((p) => Math.hypot(p.x - x, p.z - z) <= reach)) {
+        road.erasures.push({ x, z, radius });
+      }
       for (let i = road.meshes.length - 1; i >= 0; i--) {
         const m = road.meshes[i];
         if (Math.hypot(m.x - x, m.z - z) <= radius + 1.0) {
           this.roadsGroup.remove(m.mesh);
+          disposeGeometries(m.mesh);
           road.meshes.splice(i, 1);
         }
       }
@@ -121,7 +161,9 @@ export class RoadSystem {
 
   clearAll() {
     while (this.roadsGroup.children.length > 0) {
-      this.roadsGroup.remove(this.roadsGroup.children[0]);
+      const child = this.roadsGroup.children[0];
+      this.roadsGroup.remove(child);
+      disposeGeometries(child);
     }
     this.roads = [];
     this.turntable.roadMask.fill(0);

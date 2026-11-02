@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { WATER_LEVEL } from './Turntable.js';
+import { WATER_LEVEL, disposeGeometries } from './Turntable.js';
 import {
   createGiwaHouse,
   createChogaHouse,
@@ -423,6 +423,7 @@ export class ZoneSystem {
       type,
       name,
       polygon: rawPolygon,
+      paddyPolygon: type === 'paddy' ? poly : null,
       center: { x: info.cx, z: info.cz },
       group,
       labelEl,
@@ -438,13 +439,16 @@ export class ZoneSystem {
     el.className = 'zl';
     el.dataset.zoneId = zoneId;
     el.title = '클릭하여 마을 지명 바꾸기';
+    // 지명은 불러온 .json에서 올 수 있으므로 innerHTML로 넣지 않는다.
     el.innerHTML = `
       <span class="rib">
-        <span class="ty">${ZONE_TYPE_LABELS[type] || '마을'}</span>
-        <span class="nm">${name}</span>
+        <span class="ty"></span>
+        <span class="nm"></span>
       </span>
       <span class="stem"></span>
     `;
+    el.querySelector('.ty').textContent = ZONE_TYPE_LABELS[type] || '마을';
+    el.querySelector('.nm').textContent = name;
     el.addEventListener('click', (e) => {
       e.stopPropagation();
       const z = this.zones.find((item) => item.id === zoneId);
@@ -487,14 +491,13 @@ export class ZoneSystem {
         const it = zone.items[ii];
         if (Math.hypot(it.x - x, it.z - z) <= radius) {
           zone.group.remove(it.mesh);
+          disposeGeometries(it.mesh);
           zone.items.splice(ii, 1);
           removed++;
         }
       }
       if (zone.items.length === 0) {
-        this.zonesGroup.remove(zone.group);
-        if (zone.labelEl) zone.labelEl.remove();
-        this.zones.splice(zi, 1);
+        this.removeZone(zone);
       }
     }
 
@@ -502,8 +505,7 @@ export class ZoneSystem {
     for (let li = this.landmarks.length - 1; li >= 0; li--) {
       const lm = this.landmarks[li];
       if (Math.hypot(lm.x - x, lm.z - z) <= radius) {
-        this.zonesGroup.remove(lm.mesh);
-        this.landmarks.splice(li, 1);
+        this.removeLandmark(lm);
         removed++;
       }
     }
@@ -511,10 +513,31 @@ export class ZoneSystem {
     return removed;
   }
 
+  removeZone(zone) {
+    this.zonesGroup.remove(zone.group);
+    disposeGeometries(zone.group);
+    if (zone.labelEl) zone.labelEl.remove();
+    const idx = this.zones.indexOf(zone);
+    if (idx !== -1) this.zones.splice(idx, 1);
+    if (zone.paddyPolygon) {
+      this.turntable.rebuildPaddyMask(this.zones.filter((z) => z.paddyPolygon).map((z) => z.paddyPolygon));
+    }
+  }
+
+  removeLandmark(lm) {
+    this.zonesGroup.remove(lm.mesh);
+    disposeGeometries(lm.mesh);
+    const idx = this.landmarks.indexOf(lm);
+    if (idx !== -1) this.landmarks.splice(idx, 1);
+  }
+
   clearAll() {
     while (this.zonesGroup.children.length > 0) {
-      this.zonesGroup.remove(this.zonesGroup.children[0]);
+      const child = this.zonesGroup.children[0];
+      this.zonesGroup.remove(child);
+      disposeGeometries(child);
     }
+    this.turntable.paddyMask.fill(0);
     if (this.labelsContainer) {
       this.labelsContainer.innerHTML = '';
     }
