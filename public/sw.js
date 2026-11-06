@@ -2,7 +2,8 @@
 const BUILD_ID = 'dev';
 const BUILD_ASSETS = [];
 
-const CACHE_NAME = `wayu-sansu-pwa-${BUILD_ID}`;
+const CACHE_PREFIX = 'wayu-sansu-pwa-';
+const CACHE_NAME = `${CACHE_PREFIX}${BUILD_ID}`;
 // 주소에 해시가 없는 파일. 내용이 바뀌어도 주소가 같아서, 그냥 받으면 HTTP 캐시(Pages 10분)에 남은 옛 파일이
 // 새 빌드 캐시에 들어가 캐시 우선으로 나간다(manifest id를 고쳐도 Chrome이 옛 id를 보던 문제).
 // 그래서 설치 때 HTTP 캐시를 건너뛰고 새로 받는다. BUILD_ASSETS는 파일 이름에 해시가 붙어 그대로 받는다.
@@ -33,7 +34,8 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((keys) =>
       Promise.all(
         keys
-          .filter((key) => key !== CACHE_NAME)
+          // CacheStorage는 출처 단위라 같은 jeiel85.github.io의 다른 게임 캐시도 여기 보인다. 이 게임의 옛 캐시만 지운다.
+          .filter((key) => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME)
           .map((key) => caches.delete(key))
       )
     )
