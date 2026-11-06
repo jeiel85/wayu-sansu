@@ -30,6 +30,10 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Check manifest id
+        # manifest id는 출처(jeiel85.github.io) 기준으로 풀린다. "./"이면 같은 출처의 다른 앱과 겹쳐 Chrome이 이미 설치된 앱으로 본다.
+        run: grep -q '"id": "/wayu-sansu/"' public/manifest.webmanifest || { echo '::error file=public/manifest.webmanifest::manifest id는 "/wayu-sansu/"여야 합니다(DECISIONS.md 참고).'; exit 1; }
+
       - name: Build with Vite
         run: npm run build
 
